@@ -48,7 +48,8 @@ const { chromium } = require('C:/Users/maczm/.cache/codex-runtimes/codex-primary
     await page.getByRole('button', { name: 'Change layout', exact: true }).click();
     await page.locator('[data-cy="Axial Primary"]').click();
     await page.waitForFunction(() => { const s = window.services; return s.viewportGridService.getState().viewports.size === 3 && [...s.viewportGridService.getState().viewports.keys()].every(id => s.cornerstoneViewportService.getCornerstoneViewport(id)?.getActors().length === 7); });
-    await page.locator('.annotation-tools [data-tool="Probe2"]').click();
+    const points = page.locator('.annotation-tools [data-tool="Probe2"]');
+    if (await points.getAttribute('aria-pressed') !== 'true') await points.click();
     await snapshot('points-mpr');
     assert(result.states.at(-1).viewports.every(v => v.cursor.startsWith('url(') && v.canvasCursor === v.cursor));
     const toggle = () => page.locator('[data-cy="Crosshairs"]').click();

@@ -5,6 +5,8 @@ import { config, openLocal, openStreaming, releaseSource, sources } from './sour
 import { prepareStreaming, ensureSlice } from './streaming';
 import { activateNativeSource } from './dataSource';
 import { getWorkspace, setWorkspace, workspaceQuery } from './workspace';
+import { releaseStudyLayoutState } from '../../default/src/utils/releaseStudyLayoutState';
+import { activateNativeBrowse } from './navigation';
 
 async function displayed(services, next) {
   const deadline = performance.now() + 60000;
@@ -60,6 +62,7 @@ export async function switchCase({ servicesManager, previous, manifest, row, sig
     activateNativeSource(next);
     hangingProtocolService.run({ studies: [study], activeStudy: study, displaySets: sets }, 'default', { stageIndex: 0 });
     await displayed(services, next);
+    activateNativeBrowse(servicesManager);
     const updated = reply.manifest || { ...manifest, items: manifest.items.map(item => item.caseId === row.caseId ? { ...item, sourceId: metadata.sourceId } : item) };
     setWorkspace(updated, row.caseId);
     next.pendingMaskIds = reply.maskIds;
@@ -74,6 +77,7 @@ export async function switchCase({ servicesManager, previous, manifest, row, sig
     if (measurements.length) measurementService.removeMany(measurements);
     const history = utilities.HistoryMemo.DefaultHistoryMemo;
     history.size = history.size; // Public setter clears undo/redo references to the old source.
+    releaseStudyLayoutState(previous.studyUID);
     for (const ds of oldSets) displaySetService.deleteDisplaySet(ds.displaySetInstanceUID);
     releaseSource(previous.sourceKey);
     return next;
@@ -84,6 +88,7 @@ export async function switchCase({ servicesManager, previous, manifest, row, sig
         hangingProtocolService.run({ studies: [oldStudy], activeStudy: oldStudy, displaySets: oldSets }, 'default', { stageIndex: 0 });
         await displayed(services, previous);
       }
+      releaseStudyLayoutState(next.studyUID);
       for (const ds of displaySetService.getActiveDisplaySets().filter(ds => ds.sourceKey === next.sourceKey)) displaySetService.deleteDisplaySet(ds.displaySetInstanceUID);
       releaseSource(next.sourceKey);
     }

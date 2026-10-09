@@ -3,6 +3,7 @@ import classnames from 'classnames';
 import PropTypes from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
 import { NiftiIcon } from '@ohif/extension-nifti';
+import { Images, ArrowUpRight, Info } from 'lucide-react';
 import moment from 'moment';
 import qs from 'query-string';
 import isEqual from 'lodash.isequal';
@@ -170,9 +171,9 @@ function WorkList({
 
   // Set body style
   useEffect(() => {
-    document.body.classList.add('bg-black');
+    document.body.classList.add('bg-black', 'imaging-catalog-page');
     return () => {
-      document.body.classList.remove('bg-black');
+      document.body.classList.remove('bg-black', 'imaging-catalog-page');
     };
   }, []);
 
@@ -441,9 +442,9 @@ function WorkList({
                       }
                       startIcon={
                         isValidMode ? (
-                          <Icons.LaunchArrow className="!h-[20px] !w-[20px] text-black" />
+                          <ArrowUpRight size={18} />
                         ) : (
-                          <Icons.LaunchInfo className="!h-[20px] !w-[20px] text-black" />
+                          <Info size={18} />
                         )
                       }
                       onClick={() => {}}
@@ -539,7 +540,7 @@ function WorkList({
   );
 
   return (
-    <div className="flex h-screen flex-col bg-black">
+    <div className="imaging-catalog dicom-catalog">
       <Header
         isSticky
         menuOptions={menuOptions}
@@ -548,17 +549,18 @@ function WorkList({
         showPatientInfo={PatientInfoVisibility.DISABLED}
       />
       <Onboarding />
-      {appConfig.enableNiftiViewing && <nav aria-label="影像类型" className="flex items-center gap-2 border-b border-gray-800 bg-primary-dark px-6 py-2">
-        <span aria-current="page" className="rounded bg-primary/20 px-4 py-2 text-primary">DICOM 检查</span>
-        <Link to="/nifti" className="flex min-h-[40px] items-center gap-2 rounded px-4 py-2 text-[16px] text-common-light hover:bg-primary/20 hover:text-primary" aria-label="NIfTI 检查列表">
+      {appConfig.enableNiftiViewing && <nav aria-label="影像类型" className="catalog-navigation">
+        <span aria-current="page"><Images />DICOM 检查</span>
+        <Link to="/nifti" aria-label="NIfTI 检查列表">
           <NiftiIcon className="h-5 w-5" /> NIfTI
         </Link>
       </nav>}
       <InvestigationalUseDialog dialogConfiguration={appConfig?.investigationalUseDialog} />
-      <div className="flex h-full flex-col overflow-y-auto">
+      <div className="dicom-catalog-content flex flex-col overflow-y-auto">
         <ScrollArea>
           <div className="flex grow flex-col">
             <StudyListFilter
+              heading={<div className="catalog-heading"><span className="catalog-symbol"><Images /></span><div><h1>DICOM 检查</h1><p>检查、序列与影像</p></div></div>}
               numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
               filtersMeta={filtersMeta}
               filterValues={{ ...filterValues, ...defaultSortValues }}

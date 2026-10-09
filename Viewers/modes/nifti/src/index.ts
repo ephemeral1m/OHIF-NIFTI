@@ -1,5 +1,5 @@
 import longitudinal from '@ohif/mode-longitudinal';
-import { releaseAllSources } from '@ohif/extension-nifti';
+import { releaseAllSources, activateNativeBrowse } from '@ohif/extension-nifti';
 
 const handler = '@ohif/extension-nifti.sopClassHandlerModule.nifti';
 const extensionDependencies = { ...longitudinal.extensionDependencies, '@ohif/extension-nifti': '3.10.4' };
@@ -14,6 +14,14 @@ export default {
       onModeEnter(context) {
         document.body.classList.add('nifti-workbench');
         base.onModeEnter(context);
+        activateNativeBrowse(context.servicesManager);
+        const toolbar = context.servicesManager.services.toolbarService;
+        const pan = toolbar.getButton('Pan');
+        toolbar.setButtons({ ...toolbar.getButtons(), Pan: { ...pan, props: { ...pan.props,
+          label: '浏览', tooltip: '浏览 · 左键拖动图像，滚轮切层',
+        } } });
+        toolbar.setButtonSection('primary', ['Pan', 'MeasurementTools', 'Zoom', 'TrackballRotate',
+          'WindowLevel', 'Capture', 'Layout', 'Crosshairs', 'MoreTools']);
         // Native source capabilities have their own panel. Never dispatch DICOM persistence/AI.
         context.servicesManager.services.toolbarService.setButtonSection('aiToolBoxSection',
           context.extensionManager.appConfig.enableNiftiAI

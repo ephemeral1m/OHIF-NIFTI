@@ -20,14 +20,14 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
     { value: '50', label: '50' },
     { value: '100', label: '100' },
   ];
-  const [selectedRange, setSelectedRange] = useState(ranges.find(r => r.value === perPage));
+  const [selectedRange, setSelectedRange] = useState(ranges.find(r => r.value === String(perPage)));
   const onSelectedRange = selectedRange => {
     setSelectedRange(selectedRange);
     onChangePerPage(selectedRange.value);
   };
 
   return (
-    <div className="bg-black py-10">
+    <div className="study-list-pagination bg-black py-10">
       <div className="container relative m-auto px-8">
         <div className="flex justify-between">
           <div className="flex items-center">

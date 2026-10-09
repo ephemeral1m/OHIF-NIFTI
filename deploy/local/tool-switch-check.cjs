@@ -43,7 +43,8 @@ const {chromium}=require('C:/Users/maczm/.cache/codex-runtimes/codex-primary-run
  result.paint=[];
  for(const id of ids){
    await page.evaluate(id=>window.services.viewportGridService.setActiveViewportId(id),id);
-   await page.locator('.annotation-tools [data-tool="Brush"]').click();
+   const brush = page.locator('.annotation-tools [data-tool="Brush"]');
+   if (await brush.getAttribute('aria-pressed') !== 'true') await brush.click();
    const before=await pixels();
    const point=await page.evaluate(id=>{const s=window.services,v=s.cornerstoneViewportService.getCornerstoneViewport(id),r=v.element.getBoundingClientRect();return {x:r.x+r.width*.52,y:r.y+r.height*.48,mask:s.segmentationService.getActiveSegmentation(id).segmentationId,normal:v.getCamera().viewPlaneNormal};},id);
    await page.mouse.move(point.x,point.y);await page.mouse.down();await page.mouse.move(point.x+8,point.y+5,{steps:4});await page.mouse.up();await page.waitForTimeout(300);

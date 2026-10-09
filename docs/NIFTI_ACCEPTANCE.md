@@ -251,3 +251,83 @@ direct Points activation disabling Crosshairs. No page errors occurred.
 Screenshots visually checked: `annotation-top.png`, `annotation-collapsed.png`;
 state evidence: `local-data/acceptance/annotation-controls.json`. No inference
 or mask edits were performed for this check. Existing webpack warnings remain.
+
+### Axial Primary after an in-place case switch — 2026-10-09
+
+Reproduced after using Axial Primary on case A, switching to B, and immediately
+requesting Axial Primary again. A fresh Stack-only case switch did not reproduce
+it. The captured error was `getDisplaySetByUID: displaySetInstanceUid must be a
+string, you passed null`: old study selector overrides survived source release,
+and clearing the active selector had stored null instead of deleting its key.
+
+Selector clearing now deletes the override. Successful native case switches
+remove only the released study's selector, grid, stage and toggle caches;
+failed staging retains the previous study's state and cleans the staged study.
+Protocol validation remains strict.
+
+Six Jest tests passed (switchCase plus releaseStudyLayoutState). The isolated
+Edge regression `deploy/local/case-layout-check.cjs` passed A -> B -> C -> A,
+including a 2x2 layout before switching to C, then direct Axial Primary for
+each case. It covered train_12470_a_1, train_13249_b_2 and train_13092_a_2;
+all three MPR viewports retained source plus 3/6/14 masks respectively, with
+one active source and no console/page errors. Evidence: `case-layout.json`
+and `case-layout.png` under local-data/acceptance. No masks were edited or saved.
+
+### Default browse and explicit annotation activation — 2026-10-09
+
+Native NIfTI starts in Pan (labelled 浏览, first button in the top toolbar),
+including successful in-place case switches and the unused MPR tool group.
+Left drag pans and the existing wheel binding scrolls slices. Clicking an
+active annotation tool again returns all groups to browse. Changing the
+AI/manual category no longer implicitly activates a tool. Browse retains AI
+marker visibility in Enabled mode without passive handle editing. Existing
+AI preparation is invalidated when another tool is activated.
+
+Four switchCase Jest tests passed. `deploy/local/browse-tools-check.cjs` passed
+in isolated Edge: initial browse, all eight AI/manual tool toggle pairs in
+Stack and each of three MPR viewports, toolbar browse exiting AI/Crosshairs,
+actual image panning, and case replacement resetting AI to Pan. No page errors,
+inference requests or mask saves. Evidence: `browse-tools.json` and visually
+checked `browse-tools.png` in local-data/acceptance. An initial test timed out
+while frontend edits were rebuilding; the completed build passed the rerun.
+Existing tool-switch/annotation-controls scripts now respect toggle semantics
+when ensuring a tool is active. Existing webpack warnings remain.
+The updated annotation-controls browser regression also passed: panel collapse,
+AI SVG cursor decoding, and repeated Crosshairs toggles restoring Points/Brush.
+
+### Experimental brand and unified image catalogs — 2026-10-10
+
+The approved aperture concept is implemented as curved SVG strokes with rounded
+end caps (34 CSS pixels in the header), replacing the CSS-mask prototype.
+The shared Header defaults to OHIF-AI / EXPERIMENTAL in NIfTI, DICOM and viewer
+routes while retaining explicit white-label overrides. Palette tokens now live
+beside the shared brand, preserving existing viewer colors. Catalog-only rules
+restyle legacy DICOM filters, study expansion, pagination and menu portals.
+
+NIfTI uses a unified catalog shell with clear source tabs, compact contextual
+help, searchable manifest rows, report/Finding/segmentation-file counts,
+expandable file details, sticky open actions and the existing import dialogs.
+Counts describe manifest file references, not the number of segmentation targets.
+No persistence, source parsing, inference or mask semantics changed.
+
+`deploy/local/catalog-design-check.cjs` passed in isolated Edge at 125% device
+scale: five ReX manifest cases, search and empty results, file expansion, settings
+and import dialogs, library refresh, DICOM patient filtering and series expansion,
+NIfTI opening with six masks, and DICOM synthetic CT rendering (24 slices).
+1440px and 800px layouts were checked; horizontal overflow stays inside the table.
+Dialog opacity/background and the 34px viewer logo were verified. No page errors
+or annotation saves. Evidence: catalog-design.json and catalog-*.png under
+local-data/acceptance. Earlier harness attempts used the wrong patient input ID
+and queried the viewport service before initialization; both test waits/selectors
+were corrected. The frontend compiles with the two existing webpack warnings.
+
+### Approved single-line wordmark — 2026-10-10
+
+User selected the lighter text-only variant, superseding the aperture icon.
+The shared brand now reads OHIF-AI - Experimental on a single baseline: 20px
+main name with purple AI and a 14px muted suffix. Existing teal interface
+accents remain. The icon and stacked uppercase subtitle were removed.
+Checked both catalogs and the NIfTI viewer in isolated Edge. At a 1024px viewer
+width the brand ends at 218px and tools start at 295px; its height is 24px.
+Evidence: local-data/acceptance/text-brand-live.png. Updated catalog regression
+assertions to check text-only, single-line branding instead of SVG dimensions.

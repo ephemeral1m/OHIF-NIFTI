@@ -824,6 +824,14 @@ function commandsModule({
           : toolGroup.setToolPassive(activeToolName);
       }
 
+      if (toolName === 'Pan' && displaySetService.getActiveDisplaySets().some(ds => ds.sourceType === 'nifti')) {
+        // Keep prompt markers visible, but exclude their handles from passive
+        // annotation editing while the user is only browsing/panning.
+        for (const name of ['Probe2', 'RectangleROI2', 'PlanarFreehandROI2', 'PlanarFreehandROI3']) {
+          if (toolGroup.hasTool(name)) toolGroup.setToolEnabled(name);
+        }
+      }
+
       // Set the new toolName to be active
       toolGroup.setToolActive(toolName, {
         bindings: [

@@ -1,7 +1,5 @@
 /* Keep the registered OHIF tools and menus; only their workbench presentation changes. */
 .ohif-workbench-header{background:linear-gradient(112deg,#1b1425 0%,#14131b 55%,#10191e 100%)!important;border-bottom:1px solid var(--wb-border)!important;padding:2px 12px!important;color:var(--wb-text);--primary:263 100% 85%;--highlight:263 100% 85%;--background:264 11% 7%}
-.ohif-workbench-header .workbench-brand{display:inline-flex;gap:5px;align-items:center;color:#e9f0f7;font:600 19px/1.2 Inter,"Segoe UI",sans-serif;letter-spacing:-.6px;padding-left:8px}
-.ohif-workbench-header .workbench-brand>span{color:#dcb7ff;font-weight:500}
 .ohif-workbench-header button{color:#d7bff9!important;background:#37294b!important;border-radius:8px!important;box-shadow:none!important;transition:background-color 120ms,color 120ms}
 .ohif-workbench-header [data-workbench-tool=Zoom] button,.ohif-workbench-header [data-workbench-tool=Pan] button,.ohif-workbench-header [data-workbench-tool=WindowLevel] button{background:var(--wb-teal-bg)!important;color:var(--wb-teal)!important}
 .ohif-workbench-header button:hover{background:var(--wb-active)!important;color:var(--wb-text)!important}

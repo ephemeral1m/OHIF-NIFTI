@@ -7,6 +7,7 @@ import { attachMaskEvents } from './masks';
 export { default as NiftiGateway } from './Gateway';
 export { default as NiftiIcon } from './NiftiIcon';
 export { releaseAllSources } from './sourceStore';
+export { activateNativeBrowse } from './navigation';
 export default {
   id: '@ohif/extension-nifti',
   preRegistration({ appConfig }) {

@@ -8,7 +8,6 @@ import { Toolbar } from '../Toolbar/Toolbar';
 import HeaderPatientInfo from './HeaderPatientInfo';
 import { PatientInfoVisibility } from './HeaderPatientInfo/HeaderPatientInfo';
 import { preserveQueryParameters } from '@ohif/app';
-import './workbench-palette.css';
 import './workbench-header.css';
 
 function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }>) {
@@ -86,7 +85,7 @@ function ViewerHeader({ appConfig }: withAppTypes<{ appConfig: AppTypes.Config }
       menuOptions={menuOptions}
       isReturnEnabled={!!appConfig.showStudyList}
       onClickReturnButton={onClickReturnButton}
-      WhiteLabeling={appConfig.whiteLabeling || { createLogoComponentFn: () => <span className="workbench-brand">OHIF<span>AI</span></span> }}
+      WhiteLabeling={appConfig.whiteLabeling}
       Secondary={
         <Toolbar
           servicesManager={servicesManager}

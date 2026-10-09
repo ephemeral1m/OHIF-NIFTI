@@ -32,7 +32,7 @@ type DisplaySetSelectorState = {
    * @param key - The key.
    * @param value - The `displaySetInstanceUID` to associate with the key.
    */
-  setDisplaySetSelector: (key: string, value: string) => void;
+  setDisplaySetSelector: (key: string, value: string | null) => void;
 
   /**
    * Clears the entire display set selector map.
@@ -53,14 +53,15 @@ const createDisplaySetSelectorStore = (set): DisplaySetSelectorState => ({
   /**
    * Sets the display set selector for a given key.
    */
-  setDisplaySetSelector: (key: string, value: string) =>
+  setDisplaySetSelector: (key: string, value: string | null) =>
     set(
-      state => ({
-        displaySetSelectorMap: {
-          ...state.displaySetSelectorMap,
-          [key]: value,
-        },
-      }),
+      state => {
+        const displaySetSelectorMap = { ...state.displaySetSelectorMap };
+        // null means clear the override, not a display set for HP validation.
+        if (value == null) delete displaySetSelectorMap[key];
+        else displaySetSelectorMap[key] = value;
+        return { displaySetSelectorMap };
+      },
       false,
       'setDisplaySetSelector'
     ),

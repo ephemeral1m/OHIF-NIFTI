@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSystem, useToolbar } from '@ohif/core';
 import { Icons, ToolSettings } from '@ohif/ui-next';
+import { eventTarget } from '@cornerstonejs/core';
+import { Enums } from '@cornerstonejs/tools';
 import {
   Sparkles,
   Paintbrush,
@@ -41,9 +43,10 @@ const settingLabels = {
 };
 
 export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sourceKey }) {
-  const { servicesManager, commandsManager } = useSystem();
+  const { servicesManager } = useSystem();
   const { uiNotificationService } = servicesManager.services;
   const ai = useToolbar({ buttonSection: 'aiToolBoxSection' });
+  const primary = useToolbar({ buttonSection: 'primary' });
   const brush = useToolbar({ buttonSection: 'brushToolsSection' });
   const manual = useToolbar({ buttonSection: 'segmentationToolboxToolsSection' });
   const utilities = useToolbar({ buttonSection: 'segmentationToolboxUtilitySection' });
@@ -52,8 +55,7 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
   const bodyId = `annotation-tools-${sourceKey || 'pending'}`;
   const [, refresh] = useState(0);
   const [pending, setPending] = useState(false);
-  const sequence = useRef(0),
-    remembered = useRef({ ai: 'Probe2', manual: 'Brush' });
+  const sequence = useRef(0);
   const locked = toolboxState.getLocked(),
     negative = toolboxState.getPosNeg(),
     live = toolboxState.getLiveMode();
@@ -70,14 +72,18 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
       ? ai.toolbarButtons.filter(b => ['nninter', 'resetNninter'].includes(b.id))
       : utilities.toolbarButtons;
   const activeTool = [...aiTools, ...manualTools].find(b => b.componentProps.isActive);
+  const browsing = primary.toolbarButtons.some(b => b.id === 'Pan' && b.componentProps.isActive);
   const activeOptions = tools.find(b => b.componentProps.isActive)?.componentProps.options;
   const change = fn => {
     fn();
     refresh(v => v + 1);
   };
   useEffect(() => {
+    const activated = () => { sequence.current++; setPending(false); };
+    eventTarget.addEventListener(Enums.Events.TOOL_ACTIVATED, activated);
     const timer = setInterval(() => refresh(v => v + 1), 250);
     return () => {
+      eventTarget.removeEventListener(Enums.Events.TOOL_ACTIVATED, activated);
       clearInterval(timer);
       sequence.current++;
     };
@@ -105,6 +111,10 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [mode, locked]);
+  const browse = () => {
+    sequence.current++; setPending(false);
+    primary.onInteraction({ itemId: 'Pan' });
+  };
   const activate = async (id, nextMode = mode) => {
     const token = ++sequence.current;
     setMode(nextMode);
@@ -112,6 +122,10 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
       b => b.id === id
     );
     if (!button || button.componentProps.disabled || (nextMode === 'ai' && locked)) return;
+    if ([...aiTools, ...manualTools].some(b => b.id === id) && button.componentProps.isActive) {
+      browse();
+      return;
+    }
     setPending(nextMode === 'ai');
     try {
       if (nextMode === 'ai') await beforeAI?.();
@@ -120,7 +134,6 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
       // The shared toolbar dispatch applies current options and mutually
       // excludes the prior primary mouse tool; no separate editor tool state.
       ai.onInteraction({ itemId: id });
-      if ([...aiTools, ...manualTools].some(b => b.id === id)) remembered.current[nextMode] = id;
     } catch (error) {
       if (token === sequence.current)
         uiNotificationService.show({ title: '标注工具', message: error.message, type: 'error' });
@@ -129,10 +142,9 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
     }
   };
   const selectMode = next => {
-    sequence.current++;
-    setPending(false);
+    if (next === mode) return;
+    browse();
     setMode(next);
-    activate(remembered.current[next], next);
   };
   const renderTool = (tool, action = false) => {
     const props = tool.componentProps;
@@ -148,6 +160,8 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
         title={
           disabled
             ? props.disabledText || (locked ? '请先解锁 AI 提示' : '正在准备原图')
+            : !action && props.isActive
+              ? '再次点击返回浏览'
             : props.tooltip || props.label
         }
         onClick={() => activate(tool.id)}
@@ -190,7 +204,7 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
           ) : activeTool ? (
             labels[activeTool.id]
           ) : (
-            '选择工具'
+            browsing ? '浏览' : '选择工具'
           )}
         </span>
         <ChevronDown
@@ -282,7 +296,7 @@ export default function AnnotationTools({ beforeAI, enableAI, enableEditing, sou
                     toolboxState.setLocked(!locked);
                     if (!locked) {
                       toolboxState.setLiveMode(false);
-                      commandsManager.run('setToolActive', { toolName: 'Pan' });
+                      browse();
                     }
                   })
                 }

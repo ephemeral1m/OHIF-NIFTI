@@ -1,0 +1,19 @@
+/* Shared interface palette. Never applied to image data or segmentation LUTs. */
+.experimental-header, .ohif-workbench-header, body.nifti-workbench, body.imaging-catalog-page,
+.imaging-catalog, .imaging-dialog, .imaging-menu {
+  --wb-bg:#0c0d11; --wb-panel:#101014; --wb-raised:#1b1922;
+  --wb-border:#2d2936; --wb-chrome:#15131b; --wb-text:#f0edf7;
+  --wb-muted:#b7adca; --wb-accent:#cbb4ff; --wb-active:#432e65;
+  --wb-active-strong:#6843a2; --wb-teal:#7ee3e0; --wb-teal-bg:#233c46;
+  --wb-amber:#efc38f; --wb-amber-bg:#44352f; --wb-rose:#e7a4da; --wb-rose-bg:#452d4b;
+  --brand-violet:#c5adff;
+}
+.experimental-header { background:linear-gradient(112deg,#1b1425,#14131b 55%,#10191e)!important; border-bottom:1px solid var(--wb-border); padding:3px 18px!important; color:var(--wb-text); }
+.experimental-brand { display:inline-flex; align-items:baseline; white-space:nowrap; vertical-align:middle; font-family:Inter,"Segoe UI",sans-serif; line-height:1.2; }
+.experimental-name { color:#f3f0fa; font-size:20px; font-weight:650; letter-spacing:-.55px; }
+.experimental-name>span { color:var(--brand-violet); font-weight:500; }
+.experimental-separator { color:#746780; margin:0 5px; font-size:14px; font-weight:400; }
+.experimental-edition { color:#b7adca; font-size:14px; font-weight:400; letter-spacing:0; }
+.experimental-header .border-primary-dark { border-color:var(--wb-border); }
+.experimental-header [aria-label="设置"] { margin-top:0; border-radius:9px; padding:8px; color:var(--wb-accent); background:var(--wb-raised); }
+.imaging-menu { --popover:240 11% 7%; --popover-foreground:258 38% 95%; --accent:264 25% 19%; --accent-foreground:258 38% 95%; background:var(--wb-panel); color:var(--wb-text); border-color:var(--wb-border); border-radius:12px; padding:6px; box-shadow:0 14px 40px #0008; }

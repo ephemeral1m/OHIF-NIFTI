@@ -16,6 +16,7 @@ const StudyListFilter = ({
   numOfStudies,
   onUploadClick,
   getDataSourceConfigurationComponent,
+  heading,
 }) => {
   const { t } = useTranslation('StudyList');
   const { sortBy, sortDirection } = filterValues;
@@ -35,21 +36,22 @@ const StudyListFilter = ({
           <div className="container relative mx-auto flex flex-col pt-5">
             <div className="mb-5 flex flex-row justify-between">
               <div className="flex min-w-[1px] shrink flex-row items-center gap-6">
-                <Typography
+                {heading || <Typography
                   variant="h6"
                   className="text-white"
                 >
                   {t('StudyList')}
-                </Typography>
+                </Typography>}
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
                 {onUploadClick && (
-                  <div
-                    className="text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold"
+                  <button
+                    type="button"
+                    className="study-upload text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold"
                     onClick={onUploadClick}
                   >
                     <Icons.Upload />
                     <span>{t('Upload')}</span>
-                  </div>
+                  </button>
                 )}
               </div>
               <div className="flex h-[34px] flex-row items-center">
@@ -86,7 +88,7 @@ const StudyListFilter = ({
           </div>
         </div>
       </div>
-      <div className="sticky -top-1 z-10 mx-auto border-b-4 border-black">
+      <div className="study-list-filter-fields sticky -top-1 z-10 mx-auto border-b-4 border-black">
         <div className="bg-primary-dark pt-3 pb-3">
           <InputGroup
             inputMeta={filtersMeta}
@@ -139,6 +141,7 @@ StudyListFilter.propTypes = {
   isFiltering: PropTypes.bool.isRequired,
   onUploadClick: PropTypes.func,
   getDataSourceConfigurationComponent: PropTypes.func,
+  heading: PropTypes.node,
 };
 
 export default StudyListFilter;

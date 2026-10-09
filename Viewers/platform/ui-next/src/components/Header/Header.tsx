@@ -11,6 +11,7 @@ import {
 } from '../';
 
 import NavBar from '../NavBar';
+import ExperimentalBrand from '../ExperimentalBrand/ExperimentalBrand';
 
 // Todo: we should move this component to composition and remove props base
 
@@ -55,6 +56,7 @@ function Header({
     <NavBar
       isSticky={isSticky}
       {...props}
+      className={classNames('experimental-header', props.className)}
     >
       <div className="relative h-[48px] items-center">
         <div className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center">
@@ -68,7 +70,7 @@ function Header({
           >
             {isReturnEnabled && <Icons.ArrowLeft className="text-primary ml-1 h-7 w-7" />}
             <div className="ml-1">
-              {WhiteLabeling?.createLogoComponentFn?.(React, props) || <Icons.OHIFLogo />}
+              {WhiteLabeling?.createLogoComponentFn?.(React, props) || <ExperimentalBrand />}
             </div>
           </div>
         </div>
@@ -94,7 +96,7 @@ function Header({
                   <Icons.GearSettings />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" collisionPadding={12} className="z-[1000] max-h-[70vh] overflow-y-auto">
+              <DropdownMenuContent align="end" collisionPadding={12} className="imaging-menu z-[1000] max-h-[70vh] overflow-y-auto">
                 {menuOptions.map((option, index) => {
                   const IconComponent = option.icon
                     ? Icons[option.icon as keyof typeof Icons]
