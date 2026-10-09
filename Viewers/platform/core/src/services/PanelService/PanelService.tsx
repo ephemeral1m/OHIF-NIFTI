@@ -16,6 +16,7 @@ type PanelData = {
   label: string;
   name: string;
   content: unknown;
+  providesOwnHeader?: boolean;
 };
 
 export enum PanelPosition {
@@ -126,6 +127,7 @@ export default class PanelService extends PubSubService {
       label: entry.label,
       name: entry.name,
       content,
+      providesOwnHeader: !Array.isArray(panelId) && entry.providesOwnHeader === true,
     };
   }
 

@@ -215,6 +215,9 @@ const SidePanel = ({
 
   const [gridWidth, setGridWidth] = useState(getGridWidth(tabs.length, gridAvailableWidth));
   const openStatus = panelOpen ? 'open' : 'closed';
+  // A single panel may integrate navigation and collapse into its own header.
+  // Keep the shared header when users need to switch between multiple panels.
+  const contentProvidesHeader = tabs.length === 1 && tabs[0].providesOwnHeader === true;
   const style = Object.assign({}, styleMap[openStatus][side], baseStyle);
 
   const updatePanelOpen = useCallback(
@@ -462,7 +465,7 @@ const SidePanel = ({
     >
       {panelOpen ? (
         <>
-          {getOpenStateComponent()}
+          {!contentProvidesHeader && getOpenStateComponent()}
           <div 
             className={classnames(
               "flex flex-col overflow-x-hidden flex-1 min-h-0",
@@ -474,7 +477,7 @@ const SidePanel = ({
           >
           {tabs.map((tab, tabIndex) => {
             if (tabIndex === activeTabIndex) {
-              return <tab.content key={tabIndex} />;
+              return <tab.content key={tabIndex} {...(contentProvidesHeader ? { onClosePanel: () => updatePanelOpen(false) } : {})} />;
             }
             return null;
           })}

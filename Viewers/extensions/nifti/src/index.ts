@@ -20,5 +20,5 @@ export default {
   getDataSourcesModule: ({ commandsManager }) => [{ name: 'nifti', type: 'niftiApi', createDataSource: () => createDataSource(commandsManager) }],
   getSopClassHandlerModule,
   getUtilityModule: () => [{ name: 'diagnostics', exports: { memorySnapshot } }],
-  getPanelModule: () => [{ name: 'nifti', iconName: 'tab-segmentation', label: '报告与标注', component: Panel }, { name: 'caseFiles', iconName: 'tab-studies', label: '病例与文件', component: CaseFilesPanel }],
+  getPanelModule: () => [{ name: 'nifti', iconName: 'tab-segmentation', label: '报告与标注', component: Panel, providesOwnHeader: true }, { name: 'caseFiles', iconName: 'tab-studies', label: '病例与文件', component: CaseFilesPanel }],
 };
