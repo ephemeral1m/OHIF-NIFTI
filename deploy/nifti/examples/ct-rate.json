@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "name": "CT-RATE valid_668_b_2",
+      "image": "dataset/valid_fixed/valid_668/valid_668_b/valid_668_b_2.nii.gz",
+      "segmentations": []
+    },
+    {
+      "name": "CT-RATE valid_962_a_1",
+      "image": "dataset/valid_fixed/valid_962/valid_962_a/valid_962_a_1.nii.gz",
+      "segmentations": []
+    }
+  ]
+}

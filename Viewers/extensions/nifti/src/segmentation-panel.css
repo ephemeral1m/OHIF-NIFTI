@@ -1,0 +1,62 @@
+.nifti-segments {
+  --seg-bg: var(--wb-panel, #101014);
+  --seg-surface: var(--wb-raised, #1b1922);
+  --seg-line: var(--wb-border, #2d2936);
+  --seg-text: var(--wb-text, #f0edf7);
+  --seg-muted: var(--wb-muted, #b7adca);
+  --seg-accent: var(--wb-accent, #cbb4ff);
+  color: var(--seg-text);
+  font-size: 14px;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--seg-line);
+}
+.nifti-segments button { transition: background-color .15s, color .15s; }
+.nifti-segments button:focus-visible, .nifti-segments input:focus-visible {
+  outline: 2px solid var(--seg-accent); outline-offset: 3px;
+}
+.nifti-segments button:disabled { opacity: .35; cursor: not-allowed; }
+.nifti-segments .seg-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 32px; min-width: 32px; border-radius: 7px; padding: 4px 7px;
+  color: var(--seg-muted); flex-shrink: 0;
+}
+.nifti-segments .seg-action:hover:not(:disabled), .nifti-segments .seg-action[aria-pressed=true] {
+  background: #cbb4ff18; color: var(--seg-accent);
+}
+.nifti-segments .seg-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.nifti-segments .seg-heading h3 { flex: 1; font-size: 16px; font-weight: 600; }
+.nifti-segments .seg-muted { color: var(--seg-muted); font-size: 13px; }
+.nifti-segments .seg-group {
+  border: 1px solid var(--seg-line); border-radius: 12px; background: var(--seg-bg); margin-top: 12px;
+}
+.nifti-segments .seg-group-header { display: flex; align-items: center; gap: 4px; padding: 10px 8px; }
+.nifti-segments .seg-group-title { display: flex; align-items: center; flex: 1; min-width: 0; gap: 8px; text-align: left; }
+.nifti-segments .seg-group-title svg { flex-shrink: 0; }
+.nifti-segments .seg-name { display: block; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.nifti-segments .seg-finding-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; line-height: 1.45; }
+.nifti-segments .seg-group-opacity { padding: 0 14px 12px; }
+.nifti-segments .seg-target { border-top: 1px solid var(--seg-line); padding: 8px 10px; border-left: 3px solid transparent; }
+.nifti-segments .seg-target[aria-current=true] { border-left-color: var(--seg-accent); background: #cbb4ff12; }
+.nifti-segments .seg-target-heading { display: flex; align-items: center; gap: 3px; }
+.nifti-segments .seg-target-title { flex: 1; min-width: 0; text-align: left; padding: 6px 5px; border-radius: 5px; }
+.nifti-segments .seg-target-title:hover { background: #cbb4ff15; }
+.nifti-segments .seg-color { width: 10px; height: 22px; border-radius: 4px; }
+.nifti-segments .seg-version { color: var(--seg-muted); font-size: 12px; font-variant-numeric: tabular-nums; margin-right: 6px; }
+.nifti-segments .seg-dirty { width: 6px; height: 6px; background: #f5c06e; border-radius: 50%; flex-shrink: 0; margin-right: 4px; }
+.nifti-segments .seg-scene-controls { border: 1px solid var(--seg-line); }
+.nifti-segments .seg-badge { font-size: 12px; font-weight: 400; color: var(--seg-accent); margin-left: 8px; white-space: nowrap; }
+.nifti-segments .seg-range { display: flex; align-items: center; gap: 10px; min-height: 30px; font-size: 13px; color: var(--seg-muted); }
+.nifti-segments .seg-range label { min-width: 70px; }
+.nifti-segments .seg-range input { appearance: auto; accent-color: var(--seg-accent); min-width: 40px; flex: 1; width: 60px; height: 16px; }
+.nifti-segments .seg-range output { width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+.nifti-segments .seg-controls { background: var(--seg-surface); border-radius: 8px; padding: 10px; margin-top: 8px; }
+.nifti-segments .seg-modes { display: flex; gap: 2px; background: var(--seg-bg); border-radius: 7px; padding: 3px; margin-bottom: 8px; }
+.nifti-segments .seg-modes button { flex: 1; padding: 6px 2px; border-radius: 5px; font-size: 13px; color: var(--seg-muted); }
+.nifti-segments .seg-modes button[aria-pressed=true] { background: #cbb4ff25; color: var(--seg-accent); }
+.nifti-segments .seg-check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0; }
+.nifti-segments .seg-check input { appearance: auto; accent-color: var(--seg-accent); }
+.nifti-segments .seg-footer { display: flex; flex-wrap: wrap; gap: 4px; border-top: 1px solid var(--seg-line); padding: 8px; }
+.nifti-segments .seg-source { border-top: 1px solid var(--seg-line); padding: 10px 14px; font-size: 13px; color: var(--seg-muted); overflow-wrap: anywhere; }
+.nifti-segments .seg-source summary { cursor: pointer; }
+.nifti-segments .seg-source p { margin-top: 8px; }
+.nifti-segments .seg-current { margin-top: 12px; color: var(--seg-accent); font-size: 13px; overflow-wrap: anywhere; }

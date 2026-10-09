@@ -1,0 +1,223 @@
+.annotation-tools {
+  margin: 12px;
+  padding: 14px;
+  background: var(--wb-panel, #101014);
+  border: 1px solid var(--wb-border, #2d2936);
+  border-radius: 14px;
+  color: var(--wb-text, #f0edf7);
+  --background: 240 11% 7%;
+  --foreground: 258 38% 95%;
+  --muted: 260 15% 12%;
+  --muted-foreground: 261 21% 73%;
+  --primary: 263 100% 85%;
+  --popover: 240 11% 7%;
+  --accent: 264 37% 29%;
+}
+.annotation-tools .at-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+}
+.annotation-tools .at-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+.at-body:not([hidden]) {
+  margin-top: 14px;
+}
+.at-heading .at-chevron {
+  color: #a79db8;
+  transition: transform 150ms ease;
+}
+.at-heading[aria-expanded='false'] .at-chevron {
+  transform: rotate(-90deg);
+}
+.at-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #6843a22a;
+  color: #cbb4ff;
+}
+.at-current {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #cbb4ff;
+  background: #cbb4ff10;
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+.at-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #09090d;
+  border: 1px solid #292530;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+.at-tabs button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #a79db8;
+  font-size: 14px;
+  padding: 9px;
+  border-radius: 7px;
+}
+.at-tabs button[aria-selected='true'] {
+  background: #372747;
+  color: #e5d6ff;
+  box-shadow: inset 0 0 0 1px #6d4a86;
+}
+.at-ai-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.at-polarity {
+  display: flex;
+  border: 1px solid #302a38;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+}
+.at-polarity button,
+.at-live {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 5px;
+  padding: 5px 8px;
+  color: #a99fb8;
+  font-size: 12px;
+}
+.at-polarity button[aria-pressed='true'] {
+  color: #8ae2d5;
+  background: #234039;
+}
+.at-polarity button:last-child[aria-pressed='true'] {
+  color: #f1a9c5;
+  background: #452936;
+}
+.at-live[aria-pressed='true'] {
+  color: #d6baff;
+  background: #342442;
+}
+.at-lock {
+  margin-left: auto;
+  color: #b7adca;
+  padding: 6px;
+}
+.at-lock[aria-pressed='true'] {
+  color: #efc38f;
+}
+.at-tools {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+.at-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 3px;
+  background: #18151e;
+  border: 1px solid #302a38;
+  border-radius: 10px;
+  color: #b9afc9;
+  font-size: 13px;
+  min-width: 0;
+}
+.at-tool svg {
+  width: 23px;
+  height: 23px;
+}
+.at-tool[aria-pressed='true'] {
+  background: linear-gradient(145deg, #46305e, #2a203a);
+  color: #eedfff;
+  border-color: #ad84e3;
+  box-shadow: 0 0 0 1px #ad84e318;
+}
+.annotation-tools button:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+.annotation-tools button:focus-visible {
+  outline: 2px solid #cbb4ff;
+  outline-offset: 2px;
+}
+.annotation-tools button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.at-settings {
+  margin-top: 12px;
+  padding: 10px;
+  background: #18151e;
+  border: 1px solid #302a38;
+  border-radius: 9px;
+}
+.at-settings [class*='bg-primary-dark'],
+.at-settings [class*='bg-muted'] {
+  background: transparent !important;
+}
+.at-settings input {
+  accent-color: #cbb4ff;
+}
+.at-settings [role='slider'] {
+  background: #cbb4ff;
+}
+.at-settings button {
+  border-radius: 6px;
+}
+.at-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.at-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 5px;
+  border: 1px solid #302a38;
+  border-radius: 8px;
+  color: #c5bad5;
+  font-size: 12px;
+}
+.at-action svg {
+  width: 17px;
+  height: 17px;
+}
+.annotation-tools footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-top: 1px solid #27232e;
+  margin-top: 12px;
+  padding-top: 10px;
+  font-size: 11px;
+  color: #a397b3;
+}
+.annotation-tools footer > span:last-child {
+  margin-left: auto;
+}
+.at-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #bc94ee;
+}

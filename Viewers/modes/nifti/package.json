@@ -1,0 +1,5 @@
+{
+  "name": "@ohif/mode-nifti", "version": "3.10.4", "private": true,
+  "main": "src/index.ts", "module": "src/index.ts", "license": "MIT",
+  "peerDependencies": { "@ohif/mode-longitudinal": "3.10.4", "@ohif/extension-nifti": "3.10.4" }
+}

@@ -1,0 +1,38 @@
+/* Keep the registered OHIF tools and menus; only their workbench presentation changes. */
+.ohif-workbench-header{background:linear-gradient(112deg,#1b1425 0%,#14131b 55%,#10191e 100%)!important;border-bottom:1px solid var(--wb-border)!important;padding:2px 12px!important;color:var(--wb-text);--primary:263 100% 85%;--highlight:263 100% 85%;--background:264 11% 7%}
+.ohif-workbench-header .workbench-brand{display:inline-flex;gap:5px;align-items:center;color:#e9f0f7;font:600 19px/1.2 Inter,"Segoe UI",sans-serif;letter-spacing:-.6px;padding-left:8px}
+.ohif-workbench-header .workbench-brand>span{color:#dcb7ff;font-weight:500}
+.ohif-workbench-header button{color:#d7bff9!important;background:#37294b!important;border-radius:8px!important;box-shadow:none!important;transition:background-color 120ms,color 120ms}
+.ohif-workbench-header [data-workbench-tool=Zoom] button,.ohif-workbench-header [data-workbench-tool=Pan] button,.ohif-workbench-header [data-workbench-tool=WindowLevel] button{background:var(--wb-teal-bg)!important;color:var(--wb-teal)!important}
+.ohif-workbench-header button:hover{background:var(--wb-active)!important;color:var(--wb-text)!important}
+.ohif-workbench-header button:focus-visible{outline:2px solid var(--wb-accent);outline-offset:2px}
+.ohif-workbench-header button:disabled{opacity:.35}
+.ohif-workbench-header [data-active=true]>button,.ohif-workbench-header button[aria-pressed=true],.ohif-workbench-header button.bg-highlight{color:#fff!important;background:var(--wb-active-strong)!important;box-shadow:inset 0 0 0 1px #b28af0!important}
+.ohif-workbench-header svg{color:inherit!important;width:23px;height:23px}
+.ohif-workbench-header [data-cy=return-to-work-list]{color:var(--wb-accent)}
+.ohif-workbench-header [class*="border-primary"]{border-color:var(--wb-border)!important}
+body.nifti-workbench [data-panel-id] .bg-secondary-dark,body.nifti-workbench [data-panel-id] .bg-primary-dark,body.nifti-workbench [data-panel-id] .bg-bkg-med{background-color:var(--wb-chrome)!important}
+body.nifti-workbench [data-panel-id] .text-primary{color:var(--wb-accent)}
+body.nifti-workbench [data-radix-popper-content-wrapper] [role=menu]{background:var(--wb-panel);border-color:var(--wb-border);color:var(--wb-text)}
+body.nifti-case-switching .viewport-wrapper{position:relative}
+body.nifti-case-switching .viewport-wrapper::after{content:'正在准备病例…';position:absolute;inset:0;z-index:80;display:grid;place-items:center;background:#07101c99;color:#d1e8ec;font-size:15px;backdrop-filter:blur(1px)}
+body.nifti-case-switching .ohif-workbench-header button,body.nifti-case-switching .nw-shell{pointer-events:none;opacity:.6}
+@media(prefers-reduced-motion:reduce){.ohif-workbench-header button{transition:none}}
+
+/* The layout popover lives in a portal, outside the header's color scope. */
+.workbench-layout-menu {
+  --popover: 240 11% 7%; --muted: 260 15% 12%; --muted-foreground: 261 21% 73%;
+  --foreground: 258 38% 95%; --accent: 264 37% 29%; --primary: 263 100% 85%;
+  background: var(--wb-panel, #101014); color: var(--wb-text, #f0edf7);
+  border: 1px solid var(--wb-border, #2d2936) !important; border-radius: 12px !important;
+  box-shadow: 0 14px 40px #0008;
+}
+.workbench-layout-menu .layout-preset { color: var(--wb-muted, #b7adca); border-radius: 7px; }
+.workbench-layout-menu .layout-preset:hover:not(:disabled) { background: var(--wb-active, #432e65); color: var(--wb-accent, #cbb4ff); }
+.workbench-layout-menu .layout-preset svg { color: inherit; }
+.workbench-layout-menu svg [fill="#263A71"] { fill: var(--wb-active, #432e65); }
+.workbench-layout-menu .text-muted-foreground { color: var(--wb-muted, #b7adca); }
+.workbench-layout-menu .text-foreground { color: var(--wb-text, #f0edf7); }
+.workbench-layout-menu .layout-grid-cell { border-radius: 3px; background: var(--wb-border, #2d2936); border: 1px solid #544164; }
+.workbench-layout-menu .layout-grid-cell[data-highlighted=true] { background: var(--wb-active-strong, #6843a2); border-color: var(--wb-accent, #cbb4ff); }
+.workbench-layout-menu button:focus-visible { outline: 2px solid var(--wb-accent, #cbb4ff); outline-offset: 2px; }

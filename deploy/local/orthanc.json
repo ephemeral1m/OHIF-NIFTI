@@ -1,0 +1,11 @@
+{
+  "Name": "OHIF local development",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
+  "Plugins": ["/usr/local/share/orthanc/plugins/libOrthancDicomWeb.so", "/usr/local/share/orthanc/plugins/libOrthancGdcm.so"],
+  "RemoteAccessAllowed": true,
+  "AuthenticationEnabled": false,
+  "HttpPort": 8042,
+  "DicomPort": 4242,
+  "DicomWeb": { "Enable": true, "Root": "/dicom-web/", "EnableWado": true, "WadoRoot": "/wado" }
+}

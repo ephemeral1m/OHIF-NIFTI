@@ -1,0 +1,76 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{gunzipSync,gzipSync}=require('node:zlib');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE);
+const base=process.env.NIFTI_TEST_URL,out=path.resolve('release-artifacts/nifti-streaming-20261008');
+assert(new URL(base).port==='9444'||(new URL(base).hostname==='127.0.0.1'&&new URL(base).port==='1326'),'Disposable isolated data only');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE});
+ const context=await browser.newContext({httpCredentials:{username:process.env.NIFTI_TEST_USERNAME,password:process.env.NIFTI_TEST_PASSWORD,origin:base,send:'always'},viewport:{width:1500,height:1000}});
+ const page=await context.newPage();page.setDefaultTimeout(120000);page.on('dialog',d=>d.accept());
+ const report={checks:[],cycles:[],errors:[]};page.on('pageerror',e=>report.errors.push(e.message));
+ const button=name=>page.getByRole('button',{name,exact:true});
+ const memory=()=>page.evaluate(()=>window.extensionManager.getModuleEntry('@ohif/extension-nifti.utilityModule.diagnostics').exports.memorySnapshot());
+ const ready=()=>page.waitForFunction(()=>{try{const s=window.services,v=s.cornerstoneViewportService.getCornerstoneViewport(s.viewportGridService.getState().activeViewportId);return !!v?.getCornerstoneImage?.()&&v.getCornerstoneImage().imageId===v.getCurrentImageId();}catch{return false;}});
+ const masks=()=>page.evaluate(async()=>{const result=[];for(const m of window.services.segmentationService.getSegmentations()){const arrays=m.representationData.Labelmap.imageIds.map(id=>window.cornerstone.cache.getImage(id).getPixelData()),a=new Uint8Array(arrays.reduce((n,p)=>n+p.length,0));let offset=0;for(const p of arrays){a.set(p,offset);offset+=p.length;}result.push({id:m.segmentationId,hash:[...new Uint8Array(await crypto.subtle.digest('SHA-256',a))].map(x=>x.toString(16).padStart(2,'0')).join(''),foreground:a.reduce((n,x)=>n+x,0),far:a[90*128*128+17]});}return result;});
+ const jump=async index=>{await page.evaluate(async index=>{const s=window.services,v=s.cornerstoneViewportService.getCornerstoneViewport(s.viewportGridService.getState().activeViewportId);await v.setImageIdIndex(index);v.render();},index);await ready();};
+ const mark=message=>{report.checks.push(message);console.log(message);};
+ try{
+  const previous=JSON.parse(fs.readFileSync(path.join(out,'streaming-acceptance.json'))),id=previous.sourceId;
+  const source=await(await context.request.get(base+'/monai/nifti-images/'+id+'/metadata')).json();report.sourceId=id;
+  const seed=Buffer.alloc(source.count),maskUrl=base+'/monai/nifti-images/'+id+'/masks';seed[5*128*128+17]=1;
+  const save=async(fields,buffer=seed)=>{const file=Buffer.alloc(352+buffer.length);file.writeInt32LE(348);file.writeInt16LE(3,40);[128,128,96].forEach((n,i)=>file.writeInt16LE(n,42+2*i));file.writeInt16LE(2,70);file.writeInt16LE(8,72);file.writeFloatLE(352,108);file.writeFloatLE(1,112);file[123]=2;file.writeInt16LE(1,254);[280,300,320].forEach(o=>file.writeFloatLE(1,o));file.write('n+1\0',344,'ascii');buffer.copy(file,352);const r=await context.request.post(maskUrl,{timeout:180000,multipart:{file:{name:'seed.nii.gz',mimeType:'application/gzip',buffer:gzipSync(file)},geometryHash:source.geometryHash,...fields}});assert.equal(r.status(),200,await r.text());return(await r.json()).items[0];};
+  let a=await save({label:'Stream lifecycle A'});seed[90*128*128+17]=1;a=await save({label:'Stream lifecycle A',maskId:a.maskId,expectedVersion:'1'});
+  const b=await save({label:'Stream lifecycle B',labelOnly:'true'},Buffer.alloc(source.count));
+  const open=async()=>{await page.goto(base+'/nifti?sourceId='+id+'&maskIds='+a.maskId+','+b.maskId,{waitUntil:'domcontentloaded'});await ready();await page.waitForFunction(()=>window.services.segmentationService.getSegmentations().length===2);};
+  await open();const baseline=await masks();assert.equal(baseline[0].foreground,2);assert.equal(baseline[0].far,1);assert((await memory()).streams[0].loaded<96);
+  mark('saved masks retain complete unseen regions on a partial source');
+  const row=page.locator('[data-target-id="'+a.maskId+'"]');await row.getByRole('button',{name:'编辑目标 Stream lifecycle A',exact:true}).click();await ready();
+  assert.equal(await page.evaluate(()=>{const s=window.services;return s.cornerstoneViewportService.getCornerstoneViewport(s.viewportGridService.getState().activeViewportId).getCurrentImageIdIndex();}),90);
+  mark('mask click waits for remote slice and locates the target');
+  await row.getByRole('button',{name:'目标历史 Stream lifecycle A',exact:true}).click();await button('选择版本 v1').click();await button('只读预览').click();
+  await page.getByLabel('历史预览切片').fill('2');await page.waitForFunction(()=>{const c=document.querySelector('canvas[aria-label*="原始切片 3"]');return c&&!document.querySelector('[aria-label="只读历史影像预览"] [role="status"]');});
+  assert.deepEqual(await masks(),baseline);await button('结束预览').click();await page.keyboard.press('Escape');mark('historical preview awaits unviewed source slice and preserves all current masks');
+  await button('原图加载状态').click();let failures=0;
+  await page.route('**/nifti-images/'+id+'/frames/75',async route=>{if(failures++<2)await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'temporary service overload'})});else await route.continue();});
+  await jump(75);assert.equal(failures,3);await page.unroute('**/nifti-images/'+id+'/frames/75');mark('temporary HTTP errors retry at most twice and recover the same slice');
+  await page.route('**/nifti-images/'+id+'/frames/30',route=>route.fulfill({status:200,headers:{'X-Nifti-Cache-Key':'invalid','X-Nifti-Frame':'30'},body:'invalid'}));
+  await page.evaluate(()=>{const s=window.services,v=s.cornerstoneViewportService.getCornerstoneViewport(s.viewportGridService.getState().activeViewportId);v.setImageIdIndex(30).catch(()=>{});});
+  await page.waitForFunction(()=>window.extensionManager.getModuleEntry('@ohif/extension-nifti.utilityModule.diagnostics').exports.memorySnapshot().streams[0].errors.some(([i])=>i===30));
+  const unlock=button('Unlock tools');if(await unlock.isVisible())await unlock.click();await page.evaluate(()=>window.commandsManager.runCommand('setToolActive',{toolName:'CircularBrush'}));
+  const box=await page.locator('canvas').first().boundingBox();await page.mouse.click(box.x+box.width*.5,box.y+box.height*.5);assert.deepEqual(await masks(),baseline);
+  await page.unroute('**/nifti-images/'+id+'/frames/30');await button('重试当前层').click();await ready();assert.deepEqual(await masks(),baseline);mark('invalid frame blocks editing stale image; explicit retry preserves masks');
+  await page.route('**/nifti-images/'+id+'/frames/*',async route=>{await new Promise(resolve=>setTimeout(resolve,1000));await route.continue().catch(()=>{});});
+  await page.evaluate(()=>{window.commandsManager.runCommand('setToolActive',{toolName:'SphereBrush'});});await button('取消完整加载').waitFor();await button('取消完整加载').click();
+  await page.waitForFunction(()=>window.extensionManager.getModuleEntry('@ohif/extension-nifti.utilityModule.diagnostics').exports.memorySnapshot().streams[0].completing===0);
+  await page.unroute('**/nifti-images/'+id+'/frames/*');assert((await memory()).streams[0].loaded<96);assert.deepEqual(await masks(),baseline);mark('sphere tool completion can be cancelled without changing masks or view');
+  await button('Save All').click();await page.getByRole('status').filter({hasText:'已保存 2 / 2'}).waitFor();
+  const records=(await(await context.request.get(maskUrl)).json()).items;const latest=records.find(m=>m.maskId===a.maskId);
+  const nifti=gunzipSync(await(await context.request.get(maskUrl+'/'+a.maskId+'?version='+latest.version)).body());assert.deepEqual(nifti.subarray(nifti.readFloatLE(108)),seed);mark('partial-source save roundtrips every mask voxel');
+  await button('新建二值 mask').click();await page.waitForFunction(()=>window.services.segmentationService.getSegmentations().length===3);
+  await jump(48);
+  const draw=async()=>{await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();await page.mouse.move(box.x+box.width*.55,box.y+box.height*.53,{steps:8});await page.mouse.up();};
+  await page.evaluate(()=>window.commandsManager.runCommand('setToolActive',{toolName:'CircularBrush'}));await draw();
+  const brushed=(await masks())[2].foreground;assert(brushed>0);
+  await page.evaluate(()=>window.commandsManager.runCommand('setToolActive',{toolName:'CircularEraser'}));await draw();
+  assert((await masks())[2].foreground<brushed);
+  await page.evaluate(()=>{const s=window.services,v=s.segmentationService.getActiveSegmentation(s.viewportGridService.getState().activeViewportId);for(const id of v.representationData.Labelmap.imageIds)window.cornerstone.cache.getImage(id).getPixelData().fill(0);window.commandsManager.runCommand('setThresholdRange',{value:[-500,500],toolNames:['ThresholdCircularBrush']});window.commandsManager.runCommand('setToolActive',{toolName:'ThresholdCircularBrush'});});
+  await draw();assert((await masks())[2].foreground>0);
+  assert(await page.evaluate(()=>{const s=window.services,v=s.cornerstoneViewportService.getCornerstoneViewport(s.viewportGridService.getState().activeViewportId),m=s.segmentationService.getActiveSegmentation(v.id),mask=window.cornerstone.cache.getImage(m.representationData.Labelmap.imageIds[v.getCurrentImageIdIndex()]).getPixelData(),pixels=v.getCornerstoneImage().getPixelData();return mask.every((label,i)=>!label||(pixels[i]>=-500&&pixels[i]<=500));}));
+  assert((await memory()).streams[0].loaded<96);assert.deepEqual((await masks()).slice(0,2),baseline);mark('2D brush, eraser and intensity threshold work on verified partial source slices');
+  await page.evaluate(()=>{const s=window.services,v=s.segmentationService.getActiveSegmentation(s.viewportGridService.getState().activeViewportId);for(const id of v.representationData.Labelmap.imageIds)window.cornerstone.cache.getImage(id).getPixelData().fill(0);});
+  await page.evaluate(()=>{const s=window.services,v=s.segmentationService.getActiveSegmentation(s.viewportGridService.getState().activeViewportId);window.streamInterpolationId=v.segmentationId;for(const z of [30,40]){const image=window.cornerstone.cache.getImage(v.representationData.Labelmap.imageIds[z]),p=image.getPixelData();for(let y=50;y<70;y++)for(let x=50;x<70;x++)p[y*128+x]=1;}window.commandsManager.runCommand('interpolateLabelmap');});
+  await page.waitForFunction(()=>{const s=window.services.segmentationService.getSegmentation(window.streamInterpolationId);return window.cornerstone.cache.getImage(s.representationData.Labelmap.imageIds[35]).getPixelData().some(Boolean);});
+  assert.equal((await memory()).streams[0].loaded,96);assert.deepEqual((await masks()).slice(0,2),baseline);mark('native interpolation explicitly completes the source and preserves other targets');
+  for(let i=0;i<10;i++){
+   await page.getByRole('link',{name:'打开另一例 NIfTI',exact:true}).click();await page.getByRole('heading',{name:'NIfTI 检查列表',exact:true}).waitFor();
+   const cdp=await context.newCDPSession(page);await cdp.send('HeapProfiler.collectGarbage');await page.waitForTimeout(100);await cdp.send('HeapProfiler.collectGarbage');await cdp.detach();
+   const state=await memory();assert.equal(state.sources,0);assert.equal(state.images,0);assert.equal(state.bytes,0);assert.equal(state.sourceReleasedButReachableBytes,0);report.cycles.push(state);
+   await page.getByRole('button',{name:'打开 '+source.name,exact:true}).click();await ready();console.log('stream source collected',i+1);
+  }
+  mark('ten streaming open/close cycles release private caches, buffers and pending tasks');
+  await page.getByRole('link',{name:'打开另一例 NIfTI',exact:true}).click();let files=0;page.on('request',r=>{if(r.url().endsWith('/file'))files++;});
+  await page.route('**/nifti-images/'+id+'/metadata',async route=>{const r=await route.fetch(),d=await r.json();d.capabilities.streamingViewing=false;await route.fulfill({response:r,json:d});});
+  await page.goto(base+'/nifti?sourceId='+id,{waitUntil:'domcontentloaded'});await page.getByRole('alert').filter({hasText:'后端尚未启用'}).waitFor();assert.equal(files,0);mark('mismatched feature flags fail explicitly without whole-file fallback');
+  assert.deepEqual(report.errors,[]);report.passed=true;
+ }catch(error){report.passed=false;report.failure=error.stack.replace(/authorization: [^\r\n]+/gi,'authorization: [redacted]');report.memory=await memory().catch(()=>null);await page.screenshot({path:path.join(out,'streaming-edge-failure.png')});console.log(report.failure);process.exitCode=1;}
+ finally{fs.writeFileSync(path.join(out,'streaming-edge-acceptance.json'),JSON.stringify(report,null,2));await browser.close();console.log(JSON.stringify({passed:report.passed,checks:report.checks,errors:report.errors}));}
+})();

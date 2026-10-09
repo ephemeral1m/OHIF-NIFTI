@@ -1,0 +1,96 @@
+# Reference:
+# - https://docs.docker.com/compose/compose-file
+# - https://eclipsesource.com/blogs/2018/01/11/authenticating-reverse-proxy-with-keycloak/
+services:
+  # Exposed server that's handling incoming web requests
+  ohif_viewer:
+    build:
+      # Project root
+      context: ./Viewers/
+      # Relative to context
+      dockerfile: ./platform/app/.recipes/Nginx-Orthanc/dockerfile
+    image: webapp:latest
+    container_name: ohif_orthanc
+    volumes:
+      # Nginx config
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/config/.htpasswd:/etc/nginx/.htpasswd
+      # SSL cert for port 1025
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/config/ssl:/etc/nginx/ssl:ro
+      # Logs
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/logs/nginx:/var/logs/nginx
+    ports:
+      - '1025:1025' # SSL
+      - '1026:1026' # Web
+    depends_on:
+      #   - keycloak
+      - orthanc
+    restart: on-failure
+
+  # LINK: https://hub.docker.com/r/jodogne/orthanc-plugins/
+  # TODO: Update to use Postgres
+  # https://github.com/mrts/docker-postgresql-multiple-databases
+  orthanc:
+    image: jodogne/orthanc-plugins
+    hostname: orthanc
+    container_name: orthancPACS
+    volumes:
+      # Config
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/config/orthanc.json:/etc/orthanc/orthanc.json:ro
+      # Persist data
+      - ./Viewers/platform/app/.recipes/Nginx-Orthanc/volumes/orthanc-db/:/var/lib/orthanc/db/
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:4242:4242' # Orthanc DICOM — loopback only; LAN must go via nginx /pacs/
+      - '127.0.0.1:8042:8042' # Orthanc HTTP  — loopback only; LAN must go via nginx /pacs/
+  
+  monai_sam2:
+    build:
+      # Project root
+      context: ./
+      # Relative to context
+      dockerfile: ./monai-label/Dockerfile
+    image: monai
+    runtime: nvidia
+    container_name: monai_sam2
+    volumes:
+       # Persist data
+      - ./monai-label/predictions:/code/predictions
+      - ./monai-label/checkpoints:/code/checkpoints
+      - ./monai-label/hf_cache:/root/.cache/huggingface
+      - ./monai-label/nifti_segs:/code/nifti_segs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all  # This exposes all GPUs to the container
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ENABLE_MEDGEMMA=false
+      - ENABLE_NNINTERACTIVE=true
+      - ENABLE_VOXTELL=false
+      - ENABLE_SAM_MODELS=false
+      #- HF_HUB_OFFLINE=1
+      #- TRANSFORMERS_OFFLINE=1
+      - MONAI_LABEL_DCMQI_DOWNLOAD=skip
+      #- MONAI_LABEL_DCMQI_URL=https://your-mirror.example/dcmqi-1.2.4-{target_os}
+      - MONAI_LABEL_DICOMWEB_USERNAME=${MONAI_LABEL_DICOMWEB_USERNAME:?Set MONAI_LABEL_DICOMWEB_USERNAME in .env}
+      - MONAI_LABEL_DICOMWEB_PASSWORD=${MONAI_LABEL_DICOMWEB_PASSWORD:?Set MONAI_LABEL_DICOMWEB_PASSWORD in .env}
+    #  - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # Required driver capabilities for GPU use
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+            #  device_ids: ['7:1']
+              capabilities: [gpu]  # Request GPUs for this service
+    shm_size: '10gb' #runtime: nvidia  # Use NVIDIA runtime
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    ports:
+      - '8002:8002' 
+    depends_on:
+      - ohif_viewer
+      - orthanc
+    restart: on-failure

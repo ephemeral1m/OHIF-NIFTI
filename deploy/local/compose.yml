@@ -1,0 +1,98 @@
+name: ohif-local-dev
+services:
+  frontend:
+    image: ohif-ai-local-frontend:dev
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    working_dir: /usr/src/app
+    command: [sh, /local/frontend-start.sh]
+    environment:
+      NODE_ENV: development
+      NODE_OPTIONS: --max-old-space-size=6144
+      APP_CONFIG: config/nifti.js
+      WATCHPACK_POLLING: 'true'
+      CYPRESS_INSTALL_BINARY: '0'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      YARN_CACHE_FOLDER: /yarn-cache
+    volumes:
+      - ../../Viewers:/usr/src/app
+      - .:/local:ro
+      - node_modules:/usr/src/app/node_modules
+      - app_node_modules:/usr/src/app/platform/app/node_modules
+      - yarn_cache:/yarn-cache
+    restart: unless-stopped
+  backend:
+    image: monai:latest
+    command: [python, -m, monailabel.main, start_server, --app, /code/apps/radiology, --studies, 'http://orthanc:8042/dicom-web', --conf, models, segmentation, --conf, use_pretrained_model, 'false', -p, '8002']
+    environment:
+      CUDA_VISIBLE_DEVICES: '0'
+      NVIDIA_VISIBLE_DEVICES: all
+      ENABLE_NIFTI_LIBRARY: 'true'
+      ENABLE_NIFTI_EDITING: 'true'
+      ENABLE_NIFTI_AI: 'true'
+      ENABLE_NIFTI_STREAMING: 'true'
+      ENABLE_NNINTERACTIVE: 'true'
+      ENABLE_MEDGEMMA: 'false'
+      ENABLE_VOXTELL: 'false'
+      ENABLE_SAM_MODELS: 'false'
+      MONAI_LABEL_DCMQI_DOWNLOAD: skip
+      MONAI_CHECKPOINTS_DIR: /code/checkpoints
+      NIFTI_IMAGES_DIR: /code/nifti_images
+      NIFTI_STREAM_CACHE_DIR: /code/nifti_stream_cache
+      NIFTI_STREAM_CACHE_MAX_BYTES: '10737418240'
+      NIFTI_ACCEL_REDIRECT_PREFIX: /_nifti-files
+      NIFTI_STREAM_ACCEL_REDIRECT_PREFIX: /_nifti-stream-cache
+      NIFTI_IMPORT_ROOTS: '["/local-input"]'
+      PYTHONDONTWRITEBYTECODE: '1'
+    volumes:
+      - ../../monai-label/monailabel:/code/monailabel:ro
+      - ../../monai-label/sample-apps/radiology/main.py:/code/apps/radiology/main.py:ro
+      - ../../monai-label/sample-apps/radiology/lib:/code/apps/radiology/lib:ro
+      - ../../monai-label/checkpoints:/code/checkpoints:ro
+      - ../../local-data/input:/local-input:ro
+      - nifti_images:/code/nifti_images
+      - nifti_stream_cache:/code/nifti_stream_cache
+      - drafts:/code/nifti_segs
+      - predictions:/code/predictions
+    ports: ['127.0.0.1:8002:8002']
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: 2gb
+    depends_on: [orthanc]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=5).read()"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+  orthanc:
+    image: jodogne/orthanc-plugins:latest
+    volumes:
+      - ./orthanc.json:/etc/orthanc/orthanc.json:ro
+      - orthanc:/var/lib/orthanc/db
+    restart: unless-stopped
+  gateway:
+    image: webapp:latest
+    ports: ['127.0.0.1:1026:1026']
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nifti_images:/var/nifti-images:ro
+      - nifti_stream_cache:/var/nifti-stream-cache:ro
+    depends_on: [frontend, backend, orthanc]
+    restart: unless-stopped
+volumes:
+  node_modules:
+  app_node_modules:
+  yarn_cache:
+  nifti_images:
+  nifti_stream_cache:
+  drafts:
+  predictions:
+  orthanc:

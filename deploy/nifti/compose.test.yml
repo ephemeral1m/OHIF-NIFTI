@@ -1,0 +1,68 @@
+name: ohif-nifti-test
+services:
+  orthanc:
+    image: ohif-ai-vanilla-orthanc:local
+    volumes:
+      - /home/ubuntu/ohif-ai/Viewers/platform/app/.recipes/Nginx-Orthanc/config/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - orthanc_test:/var/lib/orthanc/db
+    restart: unless-stopped
+  ohif_viewer:
+    image: ohif-ai-nifti-viewer:test
+    build:
+      context: ../..
+      dockerfile: deploy/nifti/viewer.Dockerfile
+    ports: ['127.0.0.1:1126:1026']
+    volumes:
+      - ./nginx.test.conf:/etc/nginx/nginx.conf:ro
+      - nifti_images_test:/var/nifti-images:ro
+      - nifti_stream_cache_test:/var/nifti-stream-cache:ro
+      - /home/ubuntu/ohif-ai/Viewers/platform/app/.recipes/Nginx-Orthanc/config/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on: [orthanc, monai_sam2]
+    restart: unless-stopped
+  monai_sam2:
+    image: ohif-ai-nifti-monai:test
+    build:
+      context: ../..
+      dockerfile: deploy/nifti/backend.Dockerfile
+    env_file: runtime.env
+    environment:
+      ENABLE_NIFTI_LIBRARY: 'true'
+      ENABLE_NIFTI_EDITING: 'true'
+      ENABLE_NIFTI_AI: 'true'
+      ENABLE_NIFTI_STREAMING: 'true'
+      NIFTI_STREAM_CACHE_DIR: /code/nifti_stream_cache
+      NIFTI_STREAM_CACHE_MAX_BYTES: '10737418240'
+      NIFTI_STREAM_ACCEL_REDIRECT_PREFIX: /_nifti-stream-cache
+      MONAI_LABEL_DCMQI_DOWNLOAD: 'skip'
+      NIFTI_IMAGES_DIR: /code/nifti_images
+      NIFTI_ACCEL_REDIRECT_PREFIX: /_nifti-files
+      NIFTI_IMPORT_ROOTS: '["/data/cache/datasets/CT-RATE", "/nifti-acceptance-data"]'
+      ENABLE_NNINTERACTIVE: 'true'
+      ENABLE_MEDGEMMA: 'false'
+      ENABLE_VOXTELL: 'false'
+      ENABLE_SAM_MODELS: 'false'
+      CUDA_VISIBLE_DEVICES: '0'
+      NVIDIA_VISIBLE_DEVICES: '1'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+    volumes:
+      - /home/ubuntu/ohif-ai/monai-label/checkpoints:/code/checkpoints:ro
+      - /data/cache/datasets/CT-RATE:/data/cache/datasets/CT-RATE:ro
+      - /home/ubuntu/ohif-ai-nifti/release-artifacts/nifti-phantoms:/nifti-acceptance-data:ro
+      - nifti_images_test:/code/nifti_images
+      - nifti_stream_cache_test:/code/nifti_stream_cache
+      - drafts_test:/code/nifti_segs
+      - predictions_test:/code/predictions
+    shm_size: 10gb
+    restart: unless-stopped
+volumes:
+  orthanc_test:
+  nifti_images_test:
+  nifti_stream_cache_test:
+  drafts_test:
+  predictions_test:

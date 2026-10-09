@@ -1,0 +1,282 @@
+diff --git a/node_modules/@cornerstonejs/tools/dist/esm/eventListeners/segmentation/imageChangeEventListener.js b/node_modules/@cornerstonejs/tools/dist/esm/eventListeners/segmentation/imageChangeEventListener.js
+index 29a587c..c0d5b3d 100644
+--- a/node_modules/@cornerstonejs/tools/dist/esm/eventListeners/segmentation/imageChangeEventListener.js
++++ b/node_modules/@cornerstonejs/tools/dist/esm/eventListeners/segmentation/imageChangeEventListener.js
+@@ -1,5 +1,3 @@
+-import vtkDataArray from '@kitware/vtk.js/Common/Core/DataArray';
+-import vtkImageData from '@kitware/vtk.js/Common/DataModel/ImageData';
+ import { BaseVolumeViewport, getEnabledElement, Enums, getEnabledElementByIds, cache, utilities, } from '@cornerstonejs/core';
+ import { triggerSegmentationRender } from '../../stateManagement/segmentation/SegmentationRenderingEngine';
+ import { updateLabelmapSegmentationImageReferences } from '../../stateManagement/segmentation/updateLabelmapSegmentationImageReferences';
+@@ -7,6 +5,7 @@ import { getCurrentLabelmapImageIdsForViewport } from '../../stateManagement/seg
+ import { SegmentationRepresentations } from '../../enums';
+ import { getLabelmapActorEntries } from '../../stateManagement/segmentation/helpers/getSegmentationActor';
+ import { getSegmentationRepresentations } from '../../stateManagement/segmentation/getSegmentationRepresentation';
++import disposeStackLabelmapActors from '../../tools/displayTools/Labelmap/disposeStackLabelmapActors';
+ const enable = function (element) {
+     if (!element) {
+         return;
+@@ -26,108 +25,121 @@ const disable = function (element) {
+     element.removeEventListener(Enums.Events.PRE_STACK_NEW_IMAGE, _imageChangeEventListener);
+     element.removeEventListener(Enums.Events.IMAGE_RENDERED, _imageChangeEventListener);
+ };
+-const perViewportManualTriggers = new Map();
++function getActorImageData(actorEntry) {
++    return actorEntry?.actor?.getMapper?.()?.getInputData?.();
++}
++function isActorCompatible(actorEntry, derivedImage) {
++    const imageData = getActorImageData(actorEntry);
++    if (!imageData) {
++        return false;
++    }
++    if (imageData.setDerivedImage) {
++        return true;
++    }
++    const actorScalars = imageData.getPointData?.()?.getScalars?.()?.getData?.();
++    const derivedScalars = derivedImage.voxelManager?.getScalarData?.();
++    return Boolean(actorScalars &&
++        derivedScalars &&
++        actorScalars.length === derivedScalars.length &&
++        actorScalars.constructor === derivedScalars.constructor);
++}
++function updateStableActor({ actorEntry, derivedImage, derivedImageId, viewport, currentOrigin, }) {
++    const imageData = getActorImageData(actorEntry);
++    actorEntry.referencedId = derivedImageId;
++    if (imageData.setDerivedImage) {
++        imageData.setDerivedImage(derivedImage);
++        return;
++    }
++    const { dimensions, spacing, direction } = viewport.getImageDataMetadata(derivedImage);
++    imageData.setDimensions(dimensions[0], dimensions[1], 1);
++    imageData.setSpacing(spacing);
++    imageData.setDirection(direction);
++    imageData.setOrigin(currentOrigin);
++    utilities.updateVTKImageDataWithCornerstoneImage(imageData, derivedImage);
++}
+ function _imageChangeEventListener(evt) {
+     const eventData = evt.detail;
+     const { viewportId, renderingEngineId } = eventData;
+-    const { viewport } = getEnabledElementByIds(viewportId, renderingEngineId);
++    const enabledElement = getEnabledElementByIds(viewportId, renderingEngineId);
++    if (!enabledElement) {
++        return;
++    }
++    const { viewport } = enabledElement;
+     const representations = getSegmentationRepresentations(viewportId);
+     if (!representations?.length) {
+         return;
+     }
+     const labelmapRepresentations = representations.filter((representation) => representation.type === SegmentationRepresentations.Labelmap);
+-    const actors = viewport.getActors();
+-    labelmapRepresentations.forEach((representation) => {
+-        const { segmentationId } = representation;
+-        updateLabelmapSegmentationImageReferences(viewportId, segmentationId);
+-    });
+-    const labelmapActors = labelmapRepresentations
+-        .flatMap((representation) => {
+-        return getLabelmapActorEntries(viewportId, representation.segmentationId);
+-    })
+-        .filter((actor) => actor !== undefined);
+-    if (!labelmapActors.length) {
++    if (!labelmapRepresentations.length) {
+         return;
+     }
+-    labelmapActors.forEach((actor) => {
+-        const validActor = labelmapRepresentations.find((representation) => {
+-            const derivedImageIds = getCurrentLabelmapImageIdsForViewport(viewportId, representation.segmentationId);
+-            return derivedImageIds?.includes(actor.referencedId);
+-        });
+-        if (!validActor) {
+-            viewport.removeActors([actor.uid]);
+-        }
+-    });
++    const currentImageId = viewport.getCurrentImageId();
++    const currentImage = cache.getImage(currentImageId) || {
++        imageId: currentImageId,
++    };
++    const { origin: currentOrigin } = viewport.getImageDataMetadata(currentImage);
++    let actorStructureChanged = false;
++    let shouldRenderViewport = false;
+     labelmapRepresentations.forEach((representation) => {
+         const { segmentationId } = representation;
+-        const currentImageId = viewport.getCurrentImageId();
+-        const derivedImageIds = getCurrentLabelmapImageIdsForViewport(viewportId, segmentationId);
+-        if (!derivedImageIds) {
+-            return;
+-        }
+-        let shouldTriggerSegmentationRender = false;
+-        const updateSegmentationActor = (derivedImageId) => {
++        updateLabelmapSegmentationImageReferences(viewportId, segmentationId);
++        const derivedImageIds = getCurrentLabelmapImageIdsForViewport(viewportId, segmentationId) || [];
++        const existingActorEntries = getLabelmapActorEntries(viewportId, segmentationId) || [];
++        const usedActorEntries = new Set();
++        derivedImageIds.forEach((derivedImageId) => {
+             const derivedImage = cache.getImage(derivedImageId);
+             if (!derivedImage) {
+                 console.warn('No derived image found in the cache for segmentation representation', representation);
+                 return;
+             }
+-            const segmentationActorInput = actors.find((actor) => actor.referencedId === derivedImageId);
+-            if (!segmentationActorInput) {
+-                const { dimensions, spacing, direction } = viewport.getImageDataMetadata(derivedImage);
+-                const currentImage = cache.getImage(currentImageId) ||
+-                    {
+-                        imageId: currentImageId,
+-                    };
+-                const { origin: currentOrigin } = viewport.getImageDataMetadata(currentImage);
+-                const originToUse = currentOrigin;
+-                const constructor = derivedImage.voxelManager.getConstructor();
+-                const newPixelData = derivedImage.voxelManager.getScalarData();
+-                const scalarArray = vtkDataArray.newInstance({
+-                    name: 'Pixels',
+-                    numberOfComponents: 1,
+-                    values: new constructor(newPixelData),
+-                });
+-                const imageData = vtkImageData.newInstance();
+-                imageData.setDimensions(dimensions[0], dimensions[1], 1);
+-                imageData.setSpacing(spacing);
+-                imageData.setDirection(direction);
+-                imageData.setOrigin(originToUse);
+-                imageData.getPointData().setScalars(scalarArray);
+-                imageData.modified();
++            let actorEntry = existingActorEntries.find((candidate) => !usedActorEntries.has(candidate) &&
++                candidate.referencedId === derivedImageId &&
++                isActorCompatible(candidate, derivedImage));
++            if (!actorEntry) {
++                actorEntry = existingActorEntries.find((candidate) => !usedActorEntries.has(candidate) && isActorCompatible(candidate, derivedImage));
++            }
++            if (!actorEntry) {
+                 viewport.addImages([
+                     {
+                         imageId: derivedImageId,
+                         representationUID: `${segmentationId}-${SegmentationRepresentations.Labelmap}-${derivedImage.imageId}`,
+-                        callback: ({ imageActor }) => {
+-                            imageActor.getMapper().setInputData(imageData);
+-                        },
+                     },
+                 ]);
+-                shouldTriggerSegmentationRender = true;
+-                return;
++                actorEntry = (getLabelmapActorEntries(viewportId, segmentationId) || []).find((candidate) => !usedActorEntries.has(candidate) &&
++                    candidate.referencedId === derivedImageId &&
++                    isActorCompatible(candidate, derivedImage));
++                actorStructureChanged = true;
+             }
+-            else {
+-                const segmentationImageData = segmentationActorInput.actor
+-                    .getMapper()
+-                    .getInputData();
+-                if (segmentationImageData.setDerivedImage) {
+-                    segmentationImageData.setDerivedImage(derivedImage);
+-                }
+-                else {
+-                    utilities.updateVTKImageDataWithCornerstoneImage(segmentationImageData, derivedImage);
+-                }
++            if (!actorEntry) {
++                console.warn('Unable to create a stack labelmap actor for segmentation representation', representation);
++                return;
+             }
+-        };
+-        derivedImageIds.forEach(updateSegmentationActor);
+-        if (shouldTriggerSegmentationRender) {
+-            triggerSegmentationRender(viewportId);
+-        }
+-        viewport.render();
+-        if (evt.type === Enums.Events.IMAGE_RENDERED) {
+-            viewport.element.removeEventListener(Enums.Events.IMAGE_RENDERED, _imageChangeEventListener);
++            updateStableActor({
++                actorEntry,
++                derivedImage,
++                derivedImageId,
++                viewport,
++                currentOrigin,
++            });
++            usedActorEntries.add(actorEntry);
++            shouldRenderViewport = true;
++        });
++        const staleActorEntries = existingActorEntries.filter((actorEntry) => !usedActorEntries.has(actorEntry));
++        if (staleActorEntries.length) {
++            disposeStackLabelmapActors(viewport, staleActorEntries);
++            actorStructureChanged = true;
++            shouldRenderViewport = true;
+         }
+     });
++    if (evt.type === Enums.Events.IMAGE_RENDERED) {
++        viewport.element.removeEventListener(Enums.Events.IMAGE_RENDERED, _imageChangeEventListener);
++    }
++    if (actorStructureChanged) {
++        triggerSegmentationRender(viewportId);
++    }
++    if (shouldRenderViewport) {
++        viewport.render();
++    }
+ }
+ export default {
+     enable,
+diff --git a/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/disposeStackLabelmapActors.js b/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/disposeStackLabelmapActors.js
+new file mode 100644
+index 0000000..3c89ba3
+--- /dev/null
++++ b/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/disposeStackLabelmapActors.js
+@@ -0,0 +1,39 @@
++function safeDelete(vtkObject) {
++    if (!vtkObject || vtkObject.isDeleted?.()) {
++        return;
++    }
++    try {
++        vtkObject.delete?.();
++    }
++    catch (error) {
++        console.debug('Unable to dispose stack labelmap VTK resource', error);
++    }
++}
++export function disposeStackLabelmapActors(viewport, actorEntries) {
++    const uniqueEntries = [...new Map((actorEntries || [])
++            .filter((actorEntry) => actorEntry?.uid)
++            .map((actorEntry) => [actorEntry.uid, actorEntry])).values()];
++    if (!uniqueEntries.length) {
++        return;
++    }
++    viewport.removeActors(uniqueEntries.map((actorEntry) => actorEntry.uid));
++    uniqueEntries.forEach((actorEntry) => {
++        const actor = actorEntry.actor;
++        const mapper = actor?.getMapper?.();
++        const imageData = mapper?.getInputData?.();
++        try {
++            mapper?.setInputData?.(null);
++        }
++        catch (_error) {
++        }
++        try {
++            actor?.setMapper?.(null);
++        }
++        catch (_error) {
++        }
++        safeDelete(imageData);
++        safeDelete(mapper);
++        safeDelete(actor);
++    });
++}
++export default disposeStackLabelmapActors;
+diff --git a/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/removeLabelmapFromElement.js b/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/removeLabelmapFromElement.js
+index 99c961b..9a4b0c4 100644
+--- a/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/removeLabelmapFromElement.js
++++ b/node_modules/@cornerstonejs/tools/dist/esm/tools/displayTools/Labelmap/removeLabelmapFromElement.js
+@@ -1,8 +1,14 @@
+-import { getEnabledElement } from '@cornerstonejs/core';
+-import { getLabelmapActorUID } from '../../../stateManagement/segmentation/helpers/getSegmentationActor';
++import { BaseVolumeViewport, getEnabledElement } from '@cornerstonejs/core';
++import { getLabelmapActorEntries } from '../../../stateManagement/segmentation/helpers/getSegmentationActor';
++import disposeStackLabelmapActors from './disposeStackLabelmapActors';
+ function removeLabelmapFromElement(element, segmentationId) {
+     const enabledElement = getEnabledElement(element);
+     const { viewport } = enabledElement;
+-    viewport.removeActors([getLabelmapActorUID(viewport.id, segmentationId)]);
++    const actorEntries = getLabelmapActorEntries(viewport.id, segmentationId) || [];
++    if (viewport instanceof BaseVolumeViewport) {
++        viewport.removeActors(actorEntries.map((actorEntry) => actorEntry.uid));
++        return;
++    }
++    disposeStackLabelmapActors(viewport, actorEntries);
+ }
+ export default removeLabelmapFromElement;
